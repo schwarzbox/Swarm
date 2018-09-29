@@ -4,10 +4,9 @@ Swarm & Zombie is a small game inspired by experimental project "Attack of the K
 
 Goal: Try to pick up zombies and splatter them.
 
-Controls: Use mouse to set goal for swarm.
-When you move mouse, swarm try to catch goal, but usually fly too fast to stop near target.
+Controls: Use mouse to set goal for swarm. Swarm try to catch goal, but usually fly too fast to stop near target.
 
-HINT: To start playing hit dead hand. To kill zombie try to lift zombie in the cloud.
+HINT: To start playing hit "dead hand". To kill zombie try to lift zombie in the cloud.
 
 Made with Love2d and self-made UI library on top of Love Engine.
 
