@@ -7,7 +7,7 @@ local fl = require('lib/lovfl')
 
 local SET = {
     GAMENAME = love.window.getTitle(),
-    VER = '1.0',
+    VER = '1.5',
     SAVE = 'swarmsave.lua',
     FULLSCR = false,
     WID = love.graphics.getWidth(),
@@ -45,13 +45,13 @@ local SET = {
     -- Vera Sans
     MAINFNT = 'res/fnt/Trattatello.ttf',
 
-    IMG=fc.map(love.image.newImageData, fl.load_all('res/img','png','jpg')),
+    IMG=fc.map(love.image.newImageData, fl.loadAll('res/img','png','jpg')),
     AUD=fc.map(function(path)
                        if path:match('[^.]+$')=='wav' then
                            return love.audio.newSource(path,'static')
                        else
                            return love.audio.newSource(path,'stream') end
-                        end, fl.load_all('res/aud','wav','mp3'))
+                        end, fl.loadAll('res/aud','wav','mp3'))
 }
 
 SET.TITLEFNT = {SET.MAINFNT,88}

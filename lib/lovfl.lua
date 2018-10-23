@@ -28,7 +28,7 @@
 
 if arg[1] then print('0.3 LOVFL Files Function (love2d)', arg[1]) end
 
--- old lua version
+-- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
 
@@ -36,7 +36,7 @@ local lovfs = love.filesystem
 
 local FL={}
 
-function FL.load_all(dir,...)
+function FL.loadAll(dir,...)
     local extensions={...}
     local files = lovfs.getDirectoryItems(dir)
     local arr = {}
@@ -71,46 +71,46 @@ function FL.tree(dir,arr,verbose)
     return arr
 end
 
-function FL.load_file(path)
+function FL.loadFile(path)
     local file = io.open(path,'r')
     local content = file:read('*a')
     file:close()
     return content
 end
 
-function FL.save_file(path,datastr)
+function FL.saveFile(path,datastr)
     local file = io.open(path,'w')
     file:write(datastr)
     file:close()
 end
 
-function FL.append_file(path,datastr)
+function FL.appendFile(path,datastr)
     local file = io.open(path,'a')
     file:write(datastr)
     file:close()
 end
 
-function FL.copy_file(path,dir)
+function FL.copyFile(path,dir)
     local newpath = dir..'/'..path:match('[^/]+$')
-    local datastr = FL.load_file(path)
-    FL.save_file(newpath,datastr)
+    local datastr = FL.loadFile(path)
+    FL.saveFile(newpath,datastr)
 end
 
-function FL.load_love(path)
+function FL.loadLove(path)
     local chunk, err = lovfs.load(path)
     if not err then return chunk() end
 end
 
-function FL.save_love(path,datastr)
+function FL.saveLove(path,datastr)
     local file = lovfs.newFile(path,'w')
     file:write(datastr)
     file:close()
 end
 
-function FL.copy_love(file,dir)
+function FL.copyLove(file,dir)
     if not lovfs.getInfo(dir) then lovfs.createDirectory(dir) end
 
-    FL.copy_file(file:getFilename(), lovfs.getSaveDirectory()..'/'..dir)
+    FL.copyFile(file:getFilename(), lovfs.getSaveDirectory()..'/'..dir)
     love.system.openURL('file://'..lovfs.getSaveDirectory())
 end
 

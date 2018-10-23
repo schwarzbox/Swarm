@@ -1,6 +1,6 @@
 #!/usr/bin/env love
 -- SWARM
--- 1.0
+-- 1.5
 -- Game (love2d)
 -- main.lua
 
@@ -25,26 +25,18 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 -- DEALINGS IN THE SOFTWARE.
 
--- old lua version
+io.stdout:setvbuf('no')
+-- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
 
-local Tmr = require('lib/tmr')
 local fc = require('lib/fct')
-local cls = require('lib/cls')
 
 local ctrl = require('lib/lovctrl')
 local ui = require('lib/lovui')
-local cmp = require('lib/lovcmp')
-local b2d = require('lib/lovb2d')
-local imd = require('lib/lovimd')
-local fl = require('lib/lovfl')
 
 local scr = require('game/scr')
-local obj = require('game/obj')
 local set = require('game/set')
-
-io.stdout:setvbuf('no')
 
 function love:startgame()
     if self.screen then self.screen:clear() end
@@ -54,7 +46,7 @@ function love:game()
     self.screen:clear()
     self:set_screen('Game')
 end
-function love:endgame() end
+
 function love:set_screen(screen,...) self.screen = scr[screen](...) end
 function love:get_screen() return self.screen end
 
@@ -65,8 +57,6 @@ function love.load()
     love.window.setFullscreen(set.FULLSCR, 'desktop')
     love.graphics.setBackgroundColor(set.BGCLR)
 
-    local data = set.IMG['icon']
-    love.window.setIcon(data)
     -- init
     ui.init()
     ctrl.init()
@@ -81,8 +71,10 @@ end
 
 -- dt around 0.016618420952
 function love.update(dt)
-    local upd_title = string.format('%s %s', set.GAMENAME, set.VER)
-    love.window.setTitle(upd_title)
+    local title = string.format('%s %s', set.GAMENAME, set.VER,
+                                love.timer.getFPS(),
+                                fc.len(love.screen:get_objects()))
+    love.window.setTitle(title)
     -- ctrl game
     ctrl:press('pause')
     ctrl:press('quit')

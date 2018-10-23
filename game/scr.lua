@@ -2,8 +2,6 @@
 -- (c) Alexander Veledzimovich
 -- scr SWARM
 
-local unpack = table.unpack or unpack
-
 local Tmr = require('lib/tmr')
 local cls = require('lib/cls')
 
@@ -16,12 +14,12 @@ local fl = require('lib/lovfl')
 local obj = require('game/obj')
 local set = require('game/set')
 
-local Proto=cls.Cls({tag='proto',objects={},garbage={},particles={},
+local Proto=cls.Class({tag='proto',objects={},garbage={},particles={},
                         avatar=nil,fade=0,pause=false})
 -- static cmp
-Proto.get_randxy = cmp.get_randxy
+Proto.getRandOffsetXY = cmp.getRandOffsetXY
 -- particle
-Proto.local_particle = cmp.local_particle
+Proto.objectParticle = cmp.objectParticle
 function Proto:__tostring() return self.tag end
 function Proto:spawn(object)  self.objects[object] = object end
 function Proto:trash(object) self.garbage[object]=object end
@@ -49,7 +47,7 @@ end
 
 function Proto:set_cursor()
     love.mouse.setVisible(false)
-    self.cursor = self:local_particle(4, {set.GRAY,set.WHITEHHHF,
+    self.cursor = self:objectParticle(4, {set.GRAY,set.WHITEHHHF,
                             set.WHITEF},'circle',{0.1,4},{1,0.1})
 end
 
@@ -61,7 +59,9 @@ end
 
 function Proto:clear()
     self.avatar=nil
-    self.garbage={}
+    -- clean corpses
+    -- for object in pairs(self.garbage) do self.garbage[object]=nil end
+    -- self.garbage={}
     for object in pairs(self.objects) do self:destroy(object) end
     self.objects={}
     for particle in pairs(self.particles) do particle:reset() end
@@ -71,14 +71,14 @@ end
 
 
 local SCR = {}
-SCR.Menu=cls.Cls(Proto,{tag='menu',fade=1})
+SCR.Menu=cls.Class(Proto,{tag='menu',fade=1})
 SCR.Menu.bg=love.graphics.newImage(set.IMG['uibg'])
 function SCR.Menu:new(o)
     ui.Manager.clear()
     self.tmr = Tmr:new()
     cmp.GRAVITY = {x=0,y=10}
 
-    b2d.set_world(self,10,cmp.GRAVITY.x,cmp.GRAVITY.y)
+    b2d.setWorld(self,10,cmp.GRAVITY.x,cmp.GRAVITY.y)
 
     local deadhand=obj.DeadHand{screen=self,x=390,y=460,
                             scale=0.4,angle=math.rad(70),active=true}
@@ -91,7 +91,7 @@ function SCR.Menu:new(o)
                                         fntclr=set.GRAY,
                                         fnt=set.TITLEFNT}
 
-    local oldscore = fl.load_love(set.SAVE) or {42}
+    local oldscore = fl.loadLove(set.SAVE) or {42}
     ui.Label{text=oldscore[1],x=556,y=427,
             fntclr=set.GRAY,fnt=set.GAMEFNT,angle=10}
 
@@ -149,7 +149,7 @@ function SCR.Menu:draw()
 end
 
 
-SCR.Game=cls.Cls(Proto,{tag='game'})
+SCR.Game=cls.Class(Proto,{tag='game'})
 SCR.Game.bg=love.graphics.newImage(set.IMG['bg'])
 SCR.Game.fg=love.graphics.newImage(set.IMG['fg'])
 function SCR.Game:new(o)
@@ -157,18 +157,18 @@ function SCR.Game:new(o)
     self.tmr = Tmr:new()
 
     cmp.GRAVITY = {x=0,y=10}
-    b2d.set_world(self,10,cmp.GRAVITY.x,cmp.GRAVITY.y)
+    b2d.setWorld(self,10,cmp.GRAVITY.x,cmp.GRAVITY.y)
 
     self:set_objects()
     self:set_cursor()
 
-    self.fog=self:local_particle(10, {set.WHITEF,set.WHITEHF,set.GRAYF},
+    self.fog=self:objectParticle(10, {set.WHITEF,set.WHITEHF,set.GRAYF},
                                 set.IMG['fog'], {6,12}, {0.1,10}, 1)
     self.fog.particle:setRotation(0.3, 1)
     self.fog.particle:setEmitterLifetime(-1)
     self.fog.particle:emit(1)
 
-    self.cloud = self:local_particle(1, {set.GRAYHF,set.WHITEHHHF,set.GRAYF},
+    self.cloud = self:objectParticle(1, {set.GRAYHF,set.WHITEHHHF,set.GRAYF},
                                 set.IMG['cloud'], {30,40}, {0.8,1.5}, 0.01)
     self.cloud.particle:setSpeed(10,40)
     self.cloud.particle:setPosition(set.MIDWID,0)
@@ -195,7 +195,7 @@ function SCR.Game:set_objects()
     obj.Owl{screen=self,x=190,y=226}
     self.deadhand=obj.DeadHand{screen=self,x=405,y=460}
 
-    self.zombie = 13
+    self.zombie = 12
     for _=1,self.zombie do
         local zx = love.math.random(set.WID)
         local zy = love.math.random(set.HEI-40,set.HEI-20)
@@ -205,8 +205,8 @@ function SCR.Game:set_objects()
     self.avatar=self.avatar or obj.Avatar{screen=self,x=x,y=y}
 
     self.score = {val=nil}
-    ui.Label{x=392,y=428,variable=self.score,
-            fntclr=set.GRAY,fnt=set.GAMEFNT,angle=10}
+    ui.Label{x=392,y=428,var=self.score,
+                fntclr=set.GRAY,fnt=set.GAMEFNT,angle=10}
 end
 
 
@@ -217,10 +217,10 @@ function SCR.Game:destroy(...)
     self.Super.destroy(self,...)
     self.zombie=self.zombie-1
     if self.zombie==0 then
-        local scrscore=load(fl.load_file('game/'..set.SAVE) or {0})()[1]
+        local scrscore=(fl.loadLove(set.SAVE) or {0})[1]
         self.tmr:after(3,function()
             if self.score.val > scrscore then scrscore = self.score.val end
-            fl.save_love(set.SAVE,'return {'..scrscore..'}')
+            fl.saveLove(set.SAVE,'return {'..scrscore..'}')
             love:startgame()
             end)
     end
@@ -244,7 +244,7 @@ function SCR.Game.beginContact(obj1, obj2, coll)
         ud1:catch(ud2)
     end
     if ud1.tag=='zombie' and ud2.tag=='zombie' then
-        ud2:set_destroy(false)
+        ud2:set_dead(false)
         ud1:turn()
         ud2:turn()
     end
@@ -252,8 +252,8 @@ function SCR.Game.beginContact(obj1, obj2, coll)
         ud1,ud2 = ud2,ud1
     end
     if ud1.tag=='ground' and ud2.tag=='zombie' then
-        if ud2:get_destroy() then
-            ud2:dead()
+        if ud2:get_dead() then
+            ud2:destroy()
         end
         if (math.abs(ud2.xvel)>50 or math.abs(ud2.yvel)>100) then
             ud2.dust.particle:emit(25)
@@ -285,7 +285,7 @@ function SCR.Game:update(dt)
         end
     end
 
-    local randx,randy=self.get_randxy(nil, nil, set.WID, set.HEI, 'rand')
+    local randx,randy=self.getRandOffsetXY(nil, nil, set.WID, set.HEI, 'rand')
     self.fog.particle:setEmissionRate(love.math.random(1,3))
     self.fog.particle:setPosition(randx,randy)
 

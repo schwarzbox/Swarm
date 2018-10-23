@@ -26,12 +26,15 @@
 -- DEALINGS IN THE SOFTWARE.
 
 -- 3.5
--- + increase perfomance (wrong situations when use lent function)
+-- + increase perfomance (wrong situations when use len function)
 -- + refactor split, sep and shuff
 -- + remove ztab, valval, randtab
 -- + add flip
+-- + improve filter
+-- + bug in reduce
 
 -- 4.0
+-- + improve rep
 -- clear tests
 
 -- Tool Box
@@ -50,7 +53,7 @@
 if arg[0] then print('3.5 FCT Functional Tools (lua)', arg[0]) end
 if arg[1] then print('3.5 FCT Functional Tools (lua)', arg[1]) end
 
--- old lua version
+-- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
 -- seed
@@ -227,17 +230,17 @@ function FCT.slice(item,start,fin,step)
     novarg(item,'item','table')
     local arr = {}
     local meta = getmetatable(item)
-    local all_keys = FCT.keys(item)
-    local lent = #all_keys
+    local allkeys = FCT.keys(item)
+    local lent = #allkeys
     start = start or 1
     if not fin or fin>lent then fin = lent end
     step = step or 1
     local count=0
     for i=start, fin, step do
         count=count+1
-        local index = all_keys[i]
+        local index = allkeys[i]
         if type(index)=='number' then index = #arr+1 end
-        arr[index] = item[all_keys[i]]
+        arr[index] = item[allkeys[i]]
     end
     setmetatable(arr, meta)
     return arr,count
@@ -249,8 +252,8 @@ function FCT.sep(item,num)
     local arr = {}
     local i=1
     for _ in pairs(item) do
-        local tmp_item,count = FCT.slice(item,i,num+i-1)
-        if count == num then arr[#arr+1] = tmp_item else break end
+        local tmpitem,count = FCT.slice(item,i,num+i-1)
+        if count == num then arr[#arr+1] = tmpitem else break end
         i=i+num
     end
     return arr
@@ -259,8 +262,9 @@ end
 function FCT.clone(item)
     novarg(item,'item','table')
     local arr = {}
-    local oldmeta = getmetatable(item) or {}
     local meta = {}
+    local oldmeta = getmetatable(item) or {}
+
     for k, v in pairs(oldmeta) do meta[k] = v end
 
     for k, v in pairs(item) do
@@ -276,22 +280,22 @@ end
 
 function FCT.iter(item)
     novarg(item,'item','table')
-    local tmp_item = FCT.clone(item)
+    local tmpitem = FCT.clone(item)
     local arr = {}
     local meta = {}
 
     function meta.__index()
-        local all_keys = FCT.keys(tmp_item)
-        if next(all_keys) then
-            local key = all_keys[1]
-            local res = tmp_item[key]
-            tmp_item[key] = nil
+        local allkeys = FCT.keys(tmpitem)
+        if next(allkeys) then
+            local key = allkeys[1]
+            local res = tmpitem[key]
+            tmpitem[key] = nil
             return res end
     end
 
     function meta.__len()
     local len = 0
-    for _,_ in pairs(tmp_item) do len = len + 1 end
+    for _,_ in pairs(tmpitem) do len = len + 1 end
     return len
     end
     setmetatable(arr, meta)
@@ -314,8 +318,10 @@ function FCT.join(item1,item2)
     if type(item2)~='table' then item2 = {item2} end
 
     local arr = FCT.clone(item1)
+    local meta = getmetatable(arr)
     local oldmeta = getmetatable(item2) or {}
-    for k, v in pairs(oldmeta) do getmetatable(arr)[k] = v end
+
+    for k, v in pairs(oldmeta) do meta[k] = v end
 
     for k, v in pairs(item2) do
         if type(k)=='number' then k = #arr+1 end
@@ -409,8 +415,8 @@ function FCT.filter(func,item)
     novarg(func,'func','function')
     novarg(item,'item','table')
     local arr = {}
-    for _, v in pairs(item) do
-        if func(v) then arr[#arr+1] = v end
+    for k, v in pairs(item) do
+        if func(v) then arr[k] = v end
     end
     return arr
 end
@@ -432,20 +438,20 @@ function FCT.zip(...)
                     if type(item)=='table' then return true end end, {...})
     novarg(vargs[1],'vargs','table')
 
-    local min_len = false
+    local minlen = false
     for _, v in pairs(vargs) do
-        local len_arg
+        local lenarg
         if getmetatable(v) and getmetatable(v).__len then
-            len_arg = #v
+            lenarg = #v
         else
-            len_arg = FCT.len(v)
+            lenarg = FCT.len(v)
         end
-        if not min_len then min_len = len_arg end
-        if len_arg < min_len then min_len = len_arg end
+        if not minlen then minlen = lenarg end
+        if lenarg < minlen then minlen = lenarg end
     end
 
     local arr = {}
-    for i=1, min_len do
+    for i=1, minlen do
         arr[i] = FCT.map(function(item) return item[i] end, vargs)
     end
     return arr
@@ -456,8 +462,8 @@ function FCT.partial(func,...)
     local vargs = {...}
 
     local function inner(...)
-        local new_vargs = {...}
-        local res = FCT.join(vargs, new_vargs)
+        local innervargs = {...}
+        local res = FCT.join(vargs, innervargs)
         return func(unpack(res, 1, #res))
     end
     return inner
@@ -467,16 +473,16 @@ function FCT.reduce(func,item)
     novarg(func,'func','function')
     novarg(item,'item','table')
     local res = nil
-    local all_keys = FCT.keys(item)
-    local first = item[all_keys[1]]
-    local lent = #all_keys
+    local allkeys = FCT.keys(item)
+    local first = item[allkeys[1]]
+    local lent = #allkeys
     if lent>1 then
         for i=2, lent do
-            res = func(first, item[all_keys[i]])
+            res = func(first, item[allkeys[i]])
             first = res
         end
     else
-        res = func(first, first)
+        res = func(first, nil)
     end
     return res
 end
@@ -514,9 +520,9 @@ end
 
 function FCT.randkey(item)
     novarg(item,'item','table')
-    local all_keys = FCT.keys(item)
-    local index = math.random(1, #all_keys)
-    return all_keys[index]
+    local allkeys = FCT.keys(item)
+    local index = math.random(1, #allkeys)
+    return allkeys[index]
 end
 
 function FCT.randval(item)
@@ -526,10 +532,10 @@ end
 function FCT.shuff(item)
     novarg(item,'item','table')
     local arr = FCT.clone(item)
-    local all_keys = FCT.keys(item)
-    for i=1, #all_keys do
-        local index = all_keys[math.random(i, #all_keys)]
-        arr[all_keys[i]],arr[index] = arr[index],arr[all_keys[i]]
+    local allkeys = FCT.keys(item)
+    for i=1, #allkeys do
+        local index = allkeys[math.random(i, #allkeys)]
+        arr[allkeys[i]],arr[index] = arr[index],arr[allkeys[i]]
     end
     return arr
 end

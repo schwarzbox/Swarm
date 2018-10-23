@@ -2,7 +2,7 @@
 
 function love.conf(t)
     -- The name of the save directory (string)
-    t.identity = 'Swarmdata'
+    t.identity = 'SwarmData'
     -- Search files in source directory before save directory (boolean)
     t.appendidentity = false
     -- The LÖVE ver this game was made for (string)
@@ -20,7 +20,7 @@ function love.conf(t)
     -- The window title (string)
     t.window.title = 'Swarm & Zombie'
     -- Filepath to an image to use as the window's icon (string)
-    t.window.icon = nil
+    t.window.icon = 'res/img/icon.png'
     -- The window width (number)
     t.window.width = 800
     -- The window height (number)

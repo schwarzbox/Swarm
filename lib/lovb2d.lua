@@ -26,28 +26,29 @@
 -- DEALINGS IN THE SOFTWARE.
 
 if arg[1] then print('0.1 LOVB2D Game Components (love2d)', arg[1]) end
--- old lua version
-local unpack = table.unpack or unpack
+
+-- lua<5.3
 local utf8 = require('utf8')
+local unpack = table.unpack or unpack
 
 local B2D = {}
 
-function B2D.set_world(obj,px_metr,gravx,gravy,sleep)
-    px_metr = px_metr or 10
+function B2D.setWorld(obj,pxmetr,gravx,gravy,sleep)
+    pxmetr = pxmetr or 10
     gravx = gravx or 0
     gravy = gravy or 9.83
     sleep = sleep or true
     --  work well with shape sizes from 0.1 to 10 meters
-    love.physics.setMeter(px_metr)
+    love.physics.setMeter(pxmetr)
 
-    obj.world = love.physics.newWorld(gravx*px_metr,gravy*px_metr,sleep)
+    obj.world = love.physics.newWorld(gravx*pxmetr,gravy*pxmetr,sleep)
     obj.world:setCallbacks(obj.beginContact, obj.endContact,
                          obj.preSolve, obj.postSolve)
 
-    obj.get_world = function(self) return self.world end
+    obj.getWorld = function(self) return self.world end
 end
 
-function B2D.set_body(obj,world,collider,body,density)
+function B2D.setBody(obj,world,collider,body,density)
     collider = collider or (obj.collider or 'circle')
     body = body or (obj.body or 'dynamic')
     density = density or 1
@@ -72,9 +73,9 @@ function B2D.set_body(obj,world,collider,body,density)
     obj.fixture = love.physics.newFixture(obj.body, obj.shape, density)
     obj.fixture:setUserData(obj)
 
-    obj.get_body = function(self) return self.body end
-    obj.get_shape = function(self) return self.shape end
-    obj.get_fixture = function(self) return self.body end
+    obj.getBody = function(self) return self.body end
+    obj.getShape = function(self) return self.shape end
+    obj.getFixture = function(self) return self.body end
 end
 
 return B2D

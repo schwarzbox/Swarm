@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 -- CLS
--- 1.0
+-- 1.5
 -- OOP (lua)
 -- cls.lua
 
@@ -31,12 +31,25 @@
 if arg[0] then print('1.0 CLS OOP (lua)', arg[0]) end
 if arg[1] then print('1.0 CLS OOP (lua)',arg[1]) end
 
--- old lua version
+-- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
+-- init random
+math.randomseed(os.time())
 
 local CLS = {}
-function CLS.Cls(Super,class)
+local id
+
+function id()
+    local func = function(char)
+        local rand = math.random(11)-1
+        rand = (char == '0') and (rand+1) or (rand%2) + 5
+        return ('01248whoami'):sub(rand,rand)
+    end
+    return ('100000100001-1000-0000'):gsub('[01]',func)
+end
+
+function CLS.Class(Super,class)
     Super = Super or {}
     class = class or {}
     class.Super = Super
@@ -45,6 +58,7 @@ function CLS.Cls(Super,class)
 
     meta.__call = function(self,o)
                     o = o or {}
+                    o.id = id()
                     self.__index = self
                     self = setmetatable(o, self)
                     if self.new then self.new(self, o) end
