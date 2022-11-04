@@ -1,4 +1,4 @@
--- conf love2d SWARM
+-- conf SWARM
 
 function love.conf(t)
     -- The name of the save directory (string)
@@ -6,7 +6,7 @@ function love.conf(t)
     -- Search files in source directory before save directory (boolean)
     t.appendidentity = false
     -- The LÖVE ver this game was made for (string)
-    t.ver = '11.1'
+    t.ver = '11.2'
     -- Attach a console (boolean, Windows only)
     t.console = false
     -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
@@ -20,7 +20,7 @@ function love.conf(t)
     -- The window title (string)
     t.window.title = 'Swarm & Zombie'
     -- Filepath to an image to use as the window's icon (string)
-    t.window.icon = 'res/img/icon.png'
+    t.window.icon = 'res/img/swarm.png'
     -- The window width (number)
     t.window.width = 800
     -- The window height (number)

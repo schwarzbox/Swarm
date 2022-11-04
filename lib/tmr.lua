@@ -36,12 +36,14 @@
 -- time = total time
 -- step = step back
 
+-- if use timer inside objects (use loc=true)
+
 if arg[0] then print('1.0 TMR Timer (lua+love2d)', arg[0]) end
 if arg[1] then print('1.0 TMR Timer (lua+love2d)', arg[1]) end
 
 -- lua<5.3
-local utf8 = require('utf8')
 local unpack = table.unpack or unpack
+local utf8 = require('utf8')
 
 local Ease = {}
 function Ease.linear(elapsed,st,diff,time) return diff*elapsed/time+st end
@@ -120,7 +122,7 @@ function Ease.inOutExpo(elapsed,st,diff,time)
     if elapsed<1 then
         return diff/2*math.pow(2, 10*(elapsed-1))+st-diff * 0.0005
     else
-    elapsed = elapsed-1
+        elapsed = elapsed-1
     return diff/2*1.0005*(-math.pow(2, -10*elapsed)+2)+ st
     end
 end
@@ -157,11 +159,11 @@ function Ease.inOutBack(elapsed,st,diff,time,step)
   end
 end
 
-function Ease.outInBack(elapsed,st,diff,time,s)
+function Ease.outInBack(elapsed,st,diff,time,step)
   if elapsed<time/2 then
-    return Ease.outBack(elapsed*2, st, diff/2, time, s)
+    return Ease.outBack(elapsed*2, st, diff/2, time, step)
   else
-    return Ease.inBack((elapsed*2)-time, st+diff/2, diff/2, time, s)
+    return Ease.inBack((elapsed*2)-time, st+diff/2, diff/2, time, step)
   end
 end
 
@@ -203,29 +205,28 @@ function Ease.outInBounce(elapsed,st,diff,time)
 end
 
 local TMR = {}
-local destroy
-
-function TMR:new()
+function TMR:new(loc)
     self.__index = self
     self = setmetatable({},self)
+    self.alltmr = {}
     self:clear()
-    self.alltmr = {self.aftertmr, self.everytmr,
-                        self.duringtmr, self.tweentmr,
-                        self.scripttmr}
-    local update
-    if  love and love.update then
-        update = love.update
-        love.update = function(...) update(...) self.update(self,...) end
-    else
-        update = self.update
-        self.clock=os.clock()
-        self.update = function(_,...)
-                        local dt = os.clock()-_.clock
-                        _.dt=dt
-                        update(_,dt,...)
-                        _.clock=_.clock+dt
-                        return dt
-                    end
+
+    if not loc then
+        local update
+        if  love and love.update then
+            update = love.update
+            love.update = function(...) update(...) self.update(self,...) end
+        else
+            update = self.update
+            self.clock=os.clock()
+            self.update = function(_,...)
+                            local dt = os.clock()-_.clock
+                            _.dt=dt
+                            update(_,dt,...)
+                            _.clock=_.clock+dt
+                            return dt
+                        end
+        end
     end
 
     self.ease = Ease
@@ -233,7 +234,7 @@ function TMR:new()
     return self
 end
 
-function destroy(self,timers,key)
+function TMR.delete(self,timers,key)
     for timer in pairs(timers) do
         if timer.key and timer.key==key then self:remove(timer) end
     end
@@ -267,14 +268,26 @@ function TMR:remove(timer)
 end
 
 function TMR:clear()
+    for i=1, #self.alltmr do
+        for timer in pairs(self.alltmr[i]) do
+            self.alltmr[i][timer] = nil
+        end
+    end
     self.aftertmr = {} self.everytmr = {}
     self.duringtmr = {} self.tweentmr = {}
     self.scripttmr = {}
+    self.alltmr = {self.aftertmr,self.everytmr,self.duringtmr,
+                    self.tweentmr,self.scripttmr}
+end
+
+function TMR:destroy()
+    self:clear()
+    self=nil
 end
 
 function TMR:after(time,func,key)
     local timer = {elapsed=0, time=time, func=func, key=key}
-    destroy(self, self.aftertmr,key)
+    TMR.delete(self, self.aftertmr,key)
     self.aftertmr[timer] = timer
     return timer
 end
@@ -282,7 +295,7 @@ end
 function TMR:every(time,func,count,key)
     count = count or math.huge
     local timer ={elapsed=0, time=time, func=func, count=count, key=key}
-    destroy(self, self.everytmr,key)
+    TMR.delete(self, self.everytmr,key)
     self.everytmr[timer] = timer
     return timer
 end
@@ -290,7 +303,7 @@ end
 function TMR:during(time,func,after,key)
     after = after or function() end
     local timer = {elapsed=0, time=time, func=func, after=after, key=key}
-    destroy(self, self.duringtmr, key)
+    TMR.delete(self, self.duringtmr, key)
     self.duringtmr[timer] = timer
     return timer
 end
@@ -298,7 +311,7 @@ end
 function TMR:script(func,key)
     local coroutinefunc = coroutine.wrap(func)
     local timer = {func=coroutinefunc, key=key}
-    destroy(self, self.scripttmr, key)
+    TMR.delete(self, self.scripttmr, key)
     self.scripttmr[timer] = timer
 end
 
@@ -309,9 +322,11 @@ function TMR:tween(time,init,fin,ease,after,key)
     local diff = {}
     for k,v in pairs(fin) do diff[k] = v-st[k] end
 
-    local timer = {elapsed=0, time=time, st=st,diff=diff, delta=init,
-                                        ease=ease,after=after, key=key}
-    destroy(self, self.tweentmr, key)
+    local timer = {
+        elapsed=0, time=time, st=st, diff=diff, delta=init,
+        ease=ease, after=after, key=key
+    }
+    TMR.delete(self, self.tweentmr, key)
     self.tweentmr[timer] = timer
     return timer
 end

@@ -25,7 +25,6 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 -- DEALINGS IN THE SOFTWARE.
 
-io.stdout:setvbuf('no')
 -- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
@@ -35,61 +34,62 @@ local fc = require('lib/fct')
 local ctrl = require('lib/lovctrl')
 local ui = require('lib/lovui')
 
-local scr = require('game/scr')
+local nod = require('game/nod')
 local set = require('game/set')
+io.stdout:setvbuf('no')
 
 function love:startgame()
-    if self.screen then self.screen:clear() end
-    self:set_screen('Menu')
+    if self.node then self.node:clear() end
+    self:set_node('Menu')
 end
 function love:game()
-    self.screen:clear()
-    self:set_screen('Game')
+    self.node:clear()
+    self:set_node('Game')
 end
 
-function love:set_screen(screen,...) self.screen = scr[screen](...) end
-function love:get_screen() return self.screen end
+function love:set_node(node,...) self.node = nod[node](...) end
+function love:get_node() return self.node end
 
 function love.load()
-    if arg[1] then print(set.VER, set.GAMENAME, 'Game (love2d)', arg[1]) end
+    if arg[1] then print(set.VER, set.APPNAME, 'Game (love2d)', arg[1]) end
 
-    love.window.setTitle(string.format('%s %s', set.GAMENAME, set.VER))
+    love.window.setTitle(string.format('%s %s', set.APPNAME, set.VER))
     love.window.setFullscreen(set.FULLSCR, 'desktop')
     love.graphics.setBackgroundColor(set.BGCLR)
 
     -- init
-    ui.init()
-    ctrl.init()
+    ui.load()
+    ctrl.load()
 
-    ctrl:bind('lgui+p','pause', function() love.screen:set_pause() end)
-    ctrl:bind('escape','quit',function() love.quit() love.event.quit() end)
-    ctrl:bind('lgui+q','cmdq',function() love.event.quit(1) end)
+    ctrl:bind('escape','pause', function() love.node:set_pause() end)
+    ctrl:bind('lgui+r','cmdr',function() love.event.quit('restart') end)
+    ctrl:bind('lgui+q','cmdq', function() love.event.quit(1) end)
 
-    love.screen = nil
+    love.node = nil
     love:startgame()
 end
 
 -- dt around 0.016618420952
 function love.update(dt)
-    local title = string.format('%s %s', set.GAMENAME, set.VER,
+    local title = string.format('%s %s', set.APPNAME, set.VER,
                                 love.timer.getFPS(),
-                                fc.len(love.screen:get_objects()))
+                                fc.len(love.node:get_objects()))
     love.window.setTitle(title)
     -- ctrl game
     ctrl:press('pause')
-    ctrl:press('quit')
+    ctrl:press('cmdr')
     ctrl:press('cmdq')
     -- update
-    love.screen:update(dt)
+    love.node:update(dt)
 end
 
-function love.draw() love.screen:draw() end
+function love.draw() love.node:draw() end
 
 function love.focus(focus)
     if not focus then
-        love.screen:set_pause(true)
+        love.node:set_pause(true)
     else
-        love.screen:set_pause(false)
+        love.node:set_pause(false)
     end
 end
 

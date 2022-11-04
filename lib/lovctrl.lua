@@ -32,8 +32,7 @@ local unpack = table.unpack or unpack
 local utf8 = require('utf8')
 
 local CTRL = {}
-
-function CTRL.init()
+function CTRL.load()
     CTRL.actions = {}
     CTRL.pressevent = {}
     CTRL.releaseevent = {}
@@ -169,6 +168,7 @@ function CTRL:keypressed(key,unicode)
     -- combo
     if self.combokey and self.combos[self.combokey..'+'..key] then
         self.pressevent[self.combokey..'+'..key] = true
+        self.pressevent[key] = false
     end
     if not self.combokey then self.combokey = key end
 end

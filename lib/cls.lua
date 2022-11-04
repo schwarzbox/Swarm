@@ -34,6 +34,7 @@ if arg[1] then print('1.0 CLS OOP (lua)',arg[1]) end
 -- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
+
 -- init random
 math.randomseed(os.time())
 
@@ -49,7 +50,7 @@ function id()
     return ('100000100001-1000-0000'):gsub('[01]',func)
 end
 
-function CLS.Class(Super,class)
+function CLS.Class(Super, class)
     Super = Super or {}
     class = class or {}
     class.Super = Super
@@ -57,16 +58,19 @@ function CLS.Class(Super,class)
     local meta = {__index=Super}
 
     meta.__call = function(self,o)
+                    self.total = self.total + 1
                     o = o or {}
-                    o.id = id()
+                    -- o.id = id()
+                    -- o.id = o
                     self.__index = self
                     self = setmetatable(o, self)
+
                     if self.new then self.new(self, o) end
                     return self
                 end
     -- merge class
     meta.__add = function (self, oth)
-                    local New = CLS.Cls(self)
+                    local New = CLS.Class(self)
                     for k,v in pairs(oth) do New[k] = v  end
                     return New
                 end

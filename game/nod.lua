@@ -1,6 +1,6 @@
 -- Thu Aug 30 13:59:57 2018
 -- (c) Alexander Veledzimovich
--- scr SWARM
+-- node SWARM
 
 local Tmr = require('lib/tmr')
 local cls = require('lib/cls')
@@ -70,24 +70,24 @@ function Proto:clear()
 end
 
 
-local SCR = {}
-SCR.Menu=cls.Class(Proto,{tag='menu',fade=1})
-SCR.Menu.bg=love.graphics.newImage(set.IMG['uibg'])
-function SCR.Menu:new(o)
+local ND = {}
+ND.Menu=cls.Class(Proto,{tag='menu',fade=1})
+ND.Menu.bg=love.graphics.newImage(set.IMG['uibg'])
+function ND.Menu:new(o)
     ui.Manager.clear()
     self.tmr = Tmr:new()
     cmp.GRAVITY = {x=0,y=10}
 
     b2d.setWorld(self,10,cmp.GRAVITY.x,cmp.GRAVITY.y)
 
-    local deadhand=obj.DeadHand{screen=self,x=390,y=460,
+    local deadhand=obj.DeadHand{node=self,x=390,y=460,
                             scale=0.4,angle=math.rad(70),active=true}
     deadhand:turn()
 
     local x,y=ctrl:position()
-    self.avatar=self.avatar or obj.Avatar{screen=self,x=x,y=y}
+    self.avatar=self.avatar or obj.Avatar{node=self,x=x,y=y}
 
-    ui.Label{x=set.MIDWID,y=set.MIDHEI-20,text=set.GAMENAME:upper(),
+    ui.Label{x=set.MIDWID,y=set.MIDHEI-20,text=set.APPNAME:upper(),
                                         fntclr=set.GRAY,
                                         fnt=set.TITLEFNT}
 
@@ -104,7 +104,7 @@ function SCR.Menu:new(o)
     self.set_pause = function() end
 end
 
-function SCR.Menu.beginContact(obj1, obj2, coll)
+function ND.Menu.beginContact(obj1, obj2, coll)
     local ud1=obj1:getUserData()
     local ud2=obj2:getUserData()
     if ud1.tag=='swarm' and ud2.tag=='deadhand' then
@@ -112,11 +112,11 @@ function SCR.Menu.beginContact(obj1, obj2, coll)
     end
     if ud1.tag=='deadhand' and ud2.tag=='swarm' then
         ud2:catch()
-        SCR.Menu.fade = SCR.Menu.fade-0.01
+        ND.Menu.fade = ND.Menu.fade-0.01
     end
 end
 
-function SCR.Menu:update(dt)
+function ND.Menu:update(dt)
     -- ui
     ui.Manager.update(dt)
 
@@ -135,10 +135,10 @@ function SCR.Menu:update(dt)
     -- box2d to avoid problem with destroy
     if not self.world:isDestroyed() then self.world:update(dt) end
 
-    if self.fade<=0.1 then SCR.Menu.fade=1 love.audio.stop() love:game() end
+    if self.fade<=0.1 then ND.Menu.fade=1 love.audio.stop() love:game() end
 end
 
-function SCR.Menu:draw()
+function ND.Menu:draw()
     love.graphics.setColor({self.fade,self.fade,self.fade,1})
     love.graphics.draw(self.bg)
     -- items
@@ -149,10 +149,10 @@ function SCR.Menu:draw()
 end
 
 
-SCR.Game=cls.Class(Proto,{tag='game'})
-SCR.Game.bg=love.graphics.newImage(set.IMG['bg'])
-SCR.Game.fg=love.graphics.newImage(set.IMG['fg'])
-function SCR.Game:new(o)
+ND.Game=cls.Class(Proto,{tag='game'})
+ND.Game.bg=love.graphics.newImage(set.IMG['bg'])
+ND.Game.fg=love.graphics.newImage(set.IMG['fg'])
+function ND.Game:new(o)
     ui.Manager.clear()
     self.tmr = Tmr:new()
 
@@ -163,18 +163,17 @@ function SCR.Game:new(o)
     self:set_cursor()
 
     self.fog=self:objectParticle(10, {set.WHITEF,set.WHITEHF,set.GRAYF},
-                                set.IMG['fog'], {6,12}, {0.1,10}, 1)
-    self.fog.particle:setRotation(0.3, 1)
+                                set.IMG['fog'], {6,12}, {0,10}, 1,{0.1,0.2})
+    self.fog.particle:setRotation(0.1, 0.2)
     self.fog.particle:setEmitterLifetime(-1)
     self.fog.particle:emit(1)
 
     self.cloud = self:objectParticle(1, {set.GRAYHF,set.WHITEHHHF,set.GRAYF},
-                                set.IMG['cloud'], {30,40}, {0.8,1.5}, 0.01)
+                            set.IMG['cloud'], {30,40}, {0.8,1.5}, 0.01,{0,0})
     self.cloud.particle:setSpeed(10,40)
     self.cloud.particle:setPosition(set.MIDWID,0)
     self.cloud.particle:setEmissionArea('uniform', 200, 100, 0.3)
     self.cloud.particle:setRotation(0, 0)
-    self.cloud.particle:setSpin(0, 0)
     self.cloud.particle:emit(40)
     self.cloud.particle:setPosition(-set.IMG['cloud']:getWidth(),0)
 
@@ -187,22 +186,22 @@ function SCR.Game:new(o)
     set.AUD['wood']:play()
 end
 
-function SCR.Game:set_objects()
+function ND.Game:set_objects()
     local x,y=ctrl:position()
 
-    obj.Ground{screen=self,x=set.MIDWID,y=set.HEI}
-    obj.Spider{screen=self,x=740,y=365}
-    obj.Owl{screen=self,x=190,y=226}
-    self.deadhand=obj.DeadHand{screen=self,x=405,y=460}
+    obj.Ground{node=self,x=set.MIDWID,y=set.HEI}
+    obj.Spider{node=self,x=740,y=365}
+    obj.Owl{node=self,x=190,y=226}
+    self.deadhand=obj.DeadHand{node=self,x=405,y=460}
 
     self.zombie = 12
     for _=1,self.zombie do
         local zx = love.math.random(set.WID)
         local zy = love.math.random(set.HEI-40,set.HEI-20)
-        obj.Zombie{screen=self,x=zx,y=zy}
+        obj.Zombie{node=self,x=zx,y=zy}
     end
 
-    self.avatar=self.avatar or obj.Avatar{screen=self,x=x,y=y}
+    self.avatar=self.avatar or obj.Avatar{node=self,x=x,y=y}
 
     self.score = {val=nil}
     ui.Label{x=392,y=428,var=self.score,
@@ -210,23 +209,23 @@ function SCR.Game:set_objects()
 end
 
 
-function SCR.Game:get_score() return self.score.val end
-function SCR.Game:set_score(score) self.score.val = score end
+function ND.Game:get_score() return self.score.val end
+function ND.Game:set_score(score) self.score.val = score end
 
-function SCR.Game:destroy(...)
+function ND.Game:destroy(...)
     self.Super.destroy(self,...)
     self.zombie=self.zombie-1
     if self.zombie==0 then
         local scrscore=(fl.loadLove(set.SAVE) or {0})[1]
         self.tmr:after(3,function()
             if self.score.val > scrscore then scrscore = self.score.val end
-            fl.saveLove(set.SAVE,'return {'..scrscore..'}')
+            fl.saveLoveFile(set.SAVE,'return {'..scrscore..'}')
             love:startgame()
             end)
     end
 end
 
-function SCR.Game.beginContact(obj1, obj2, coll)
+function ND.Game.beginContact(obj1, obj2, coll)
     local ud1=obj1:getUserData()
     local ud2=obj2:getUserData()
     if ud1.tag=='swarm' and ud2.tag=='ground' then
@@ -261,7 +260,7 @@ function SCR.Game.beginContact(obj1, obj2, coll)
     end
 end
 
-function SCR.Game:update(dt)
+function ND.Game:update(dt)
     -- ui
     ui.Manager.update(dt)
     self:cursor_upd()
@@ -296,7 +295,7 @@ function SCR.Game:update(dt)
     if not self.world:isDestroyed() then self.world:update(dt) end
 end
 
-function SCR.Game:draw()
+function ND.Game:draw()
     love.graphics.setColor({self.fade,self.fade,self.fade,1})
     love.graphics.draw(self.bg)
     -- garbage
@@ -315,4 +314,4 @@ function SCR.Game:draw()
     ui.Manager.draw()
 end
 
-return SCR
+return ND

@@ -25,27 +25,7 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 -- DEALINGS IN THE SOFTWARE.
 
--- 0.25
--- hide locals
--- 0.3
--- stop gravity
--- better rect with pivot
--- jump walk speed and dumping
--- bounce
--- total update for collision and gravity inside CMP
-
--- add inertion(torque) friction and restitution
--- add particle option rotation spin
--- check sin cos for speed - low speed
--- 0.4
--- per pixel collision masksb
--- 0.5
--- center of mass
--- rectangle rotation
--- circle rotation hill (inertion)
--- fall bricks after center (inertion)
--- 0.5
--- border problem collide when out screen
+-- old lovcmp
 
 if arg[1] then print('0.2 LOVCMP Game Components (love2d)', arg[1]) end
 
@@ -55,17 +35,28 @@ local utf8 = require('utf8')
 
 local CMP = {DT=0.017,EPSILON=2^-31,GRAVITY={x=0,y=9.83},METER=1,TILESIZE=1}
 function CMP.setObject(obj,data)
-    data = data or obj.imageData
+    data = data or obj.imgdata
     local wid,hei = data:getDimensions()
-    obj.pivx = wid/2
-    obj.pivy = hei/2
+    obj.pivx = obj.pivx or wid/2
+    obj.pivy = obj.pivy or hei/2
     obj.wid = wid*obj.scale
     obj.hei = hei*obj.scale
     obj.radius = math.min(obj.wid, obj.hei)/2
 
+    obj.setImage = function(self,image)
+                        self.image=image
+                        self.image:setFilter('nearest', 'linear')
+                    end
+    obj.setImage(obj,love.graphics.newImage(data))
+
+    obj.quad = love.graphics.newQuad(0,0,wid,hei,wid,hei)
+    obj.rect = CMP.getRect(obj)
+
+    obj.particles = {}
+
     -- matrix collision
-    obj.xtile=math.floor(obj.x/CMP.TILESIZE+(obj.x/CMP.TILESIZE)%1)
-    obj.ytile=math.floor(obj.y/CMP.TILESIZE+(obj.y/CMP.TILESIZE)%1)
+    obj.tilex = math.floor(obj.x/CMP.TILESIZE+(obj.x/CMP.TILESIZE)%1)
+    obj.tiley = math.floor(obj.y/CMP.TILESIZE+(obj.y/CMP.TILESIZE)%1)
 
     -- physics
     obj.mass = (obj.wid*obj.hei/(CMP.METER*CMP.METER))
@@ -87,17 +78,12 @@ function CMP.setObject(obj,data)
     obj.hp = obj.hp or 1
     obj.damage = obj.damage or 1
 
-    obj.particles = {}
-
-    obj.setImage = function(self,image)
-                        self.image=image
-                        self.image:setFilter('nearest', 'linear')
+    obj.weapon = obj.weapon or {type=nil, side='center',offset={0,0}}
+    obj.setWeapon = function(self,type_,side,offset)
+                        self.weapon.type = type_ or self.weapon.type
+                        self.weapon.side = side or self.weapon.side
+                        self.weapon.offset = offset or self.weapon.offset
                     end
-
-    obj.setImage(obj,love.graphics.newImage(data))
-
-    obj.quad = love.graphics.newQuad(0,0,wid,hei,wid,hei)
-    obj.rect = CMP.getRect(obj)
 
     obj.updateXY = function(self,dt) dt = dt or CMP.DT
         self.x = self.x+(self.dx*CMP.METER*dt)
@@ -116,14 +102,77 @@ function CMP.setObject(obj,data)
     obj.setDA = function(self,da) da=da or 0 self.da=da end
 end
 
+function CMP.getRect(obj)
+    local cosx,siny = CMP.getCosSin(obj.angle)
+    local wid,hei = obj.imgdata:getDimensions()
+    obj.wid = wid*obj.scale
+    obj.hei = hei*obj.scale
+    obj.radius = math.min(obj.wid, obj.hei)/2
+    local midwid=obj.wid/2
+    local midhei=obj.hei/2
+    local horx = cosx*midwid
+    local hory = siny*midwid
+    local verx = cosx*midhei
+    local very = siny*midhei
+
+    return {topleft = {obj.x-horx+very, obj.y-hory-verx},
+            top = {obj.x+very, obj.y-verx},
+            topright = {obj.x+horx+very, obj.y+hory-verx},
+            right = {obj.x+horx, obj.y+hory},
+            botright = {obj.x+horx-very, obj.y+hory+verx},
+            bot = {obj.x-very, obj.y+verx},
+            botleft = {obj.x-horx-very, obj.y-hory+verx},
+            left = {obj.x-horx, obj.y-hory},
+            center = {obj.x, obj.y}}
+end
+
+function CMP.getRectOffset(sidex,sidey,angle,offset)
+    offset = offset or {0,0}
+    local cosx,siny = CMP.getCosSin(angle)
+    local horx = cosx*offset[1]
+    local hory = siny*offset[1]
+    local verx = cosx*offset[2]
+    local very = siny*offset[2]
+    local x,y
+    x = sidex+horx-very
+    y = sidey+hory+verx
+    return x,y
+end
+
+function CMP.getRandOffsetXY(x,y,widscr,heiscr,side)
+    if x and y then
+        x,y = x,y
+    else
+        x = love.math.random(0,widscr)
+        y = love.math.random(0,heiscr)
+        if side=='rand' then
+            local randside = love.math.random(0,1)
+            if randside==0 then
+                local randx = love.math.random(0,1)
+                x = widscr
+                if randx==0 then x = 0 end
+            else
+                local randy = love.math.random(0,1)
+                y = heiscr
+                if randy==0 then y = 0 end
+            end
+        elseif side=='top' then y = 0
+        elseif side=='bot' then y = heiscr
+        elseif side=='left' then x = 0
+        elseif side=='right' then x = widscr
+        else x,y = x,y end
+    end
+    return x,y
+end
+
 function CMP.setSprite(obj,data,tilex,tiley,numx,numy)
     obj.sprite = {}
     obj.sprite.default = love.graphics.newImage(data)
-    obj.sprite.tiles = obj.sprite.default
-    obj.sprite.tiles:setFilter('nearest', 'linear')
+    obj.sprite.atlas = obj.sprite.default
+    obj.sprite.atlas:setFilter('nearest', 'linear')
     obj.sprite.quads = {}
-    local sx = obj.sprite.tiles:getWidth()
-    local sy = obj.sprite.tiles:getHeight()
+    local sx = obj.sprite.atlas:getWidth()
+    local sy = obj.sprite.atlas:getHeight()
     for y=0,numy-1 do
         for x=0,numx-1 do
             obj.sprite.quads[#obj.sprite.quads+1]=love.graphics.newQuad(
@@ -135,25 +184,25 @@ function CMP.setSprite(obj,data,tilex,tiley,numx,numy)
 end
 
 function CMP.animateSprite(obj,start,fin,total)
-    total=total or 1
-    fin=fin+1
-    local animation={start=start,fin=fin,total=total,speed=1,elapsed=0}
-    animation.update=function(dt)
+    total = total or 1
+    fin = fin+1
+    local animation = {start=start,fin=fin,total=total,speed=1,elapsed=0}
+    animation.update = function(dt)
             animation.elapsed=animation.elapsed+dt
             if animation.elapsed>=(animation.total/animation.speed) then
                 animation.elapsed=0
             end
-            local pass=animation.elapsed/(animation.total/animation.speed)
-            local index=start+math.floor(pass*(fin-start))
-            obj.quad=obj.sprite.quads[index]
-            end
-    animation.setTiles=function(tiles)
-                            obj.sprite.tiles=tiles or obj.sprite.default
-                            obj.image=obj.sprite.tiles
+            local pass = animation.elapsed/(animation.total/animation.speed)
+            local index = start+math.floor(pass*(fin-start))
+            obj.quad = obj.sprite.quads[index]
+        end
+    animation.setAtlas = function(atlas)
+                            obj.sprite.atlas = atlas or obj.sprite.default
+                            obj.image = obj.sprite.atlas
                         end
-    animation.setSpeed=function(speed) animation.speed=speed end
-    animation.setTiles()
-    obj.quad=obj.sprite.quads[1]
+    animation.setSpeed = function(speed) animation.speed=speed end
+    animation.setAtlas()
+    obj.quad = obj.sprite.quads[1]
     return animation
 end
 
@@ -211,6 +260,67 @@ function CMP.angularDamping(obj,dt)
     obj.da = obj.da-obj.da*dt
 end
 
+function CMP.shot(obj)
+    if obj.weapon.type  then
+        local side = obj.weapon.side
+        local offset = obj.weapon.offset
+        local kick = obj.weapon.type.kick or 0
+        local x,y = CMP.getRectOffset(obj.rect[side][1],obj.rect[side][2],
+                                                         obj.angle, offset)
+        local shot = obj.weapon.type{node=obj.node, x=x,y=y,
+                        dx=obj.dx, dy=obj.dy,
+                        angle=obj.angle, da=0, scale=obj.scale}
+
+        if obj.move then obj:move(kick) end
+        return shot
+    end
+end
+
+function CMP.hit(obj,damage)
+    damage = damage or 1
+    if type(obj.hp)=='table' then
+        obj.hp.val = obj.hp.val-damage
+        return obj.hp.val<=0
+    else
+        obj.hp = obj.hp-damage
+        return obj.hp<=0
+    end
+end
+
+function CMP.target(obj,x,y,rotate)
+    local tcosx,tsiny = CMP.getDirection(obj.x,obj.y,x,y)
+    local dx,dy = tcosx*obj.speed,tsiny*obj.speed
+    local side = 0
+    if rotate then
+        local ocosx,osiny = CMP.getDirection(obj.x,obj.y,
+                                            obj.rect.right[1],
+                                             obj.rect.right[2])
+        local tarcos = tcosx-tcosx%0.1
+        local objcos = ocosx-ocosx%0.1
+        local tarsin = tsiny-tsiny%0.1
+        local objsin = osiny-osiny%0.1
+
+        if tarcos == objcos and tarsin == objsin then
+            obj.da=0
+            return dx,dy,side
+        end
+
+        local tacos = math.acos(tcosx)
+        local oacos = math.acos(ocosx)
+
+        if tarsin<0 then tacos = math.pi*2-tacos end
+        if objsin<0 then oacos = math.pi*2-oacos end
+
+        if tacos>=oacos then
+            side=1
+            if tacos-oacos > math.pi then side=-1 end
+        else side=-1
+            if oacos-tacos > math.pi then side=1 end
+        end
+    end
+    return dx,dy,side
+end
+
 function CMP.circleView(obj,x,y)
     x=x or obj.x
     y=y or obj.y
@@ -262,92 +372,35 @@ function CMP.outScreen(obj,widscr,heiscr)
     return obj.x<0 or obj.y<0 or obj.x>widscr or obj.y>heiscr
 end
 
-
-function CMP.target(obj,x,y,rotate)
-    local tcosx,tsiny = CMP.getDirection(obj.x,obj.y,x,y)
-    local dx,dy = tcosx*obj.speed,tsiny*obj.speed
-    local side = 0
-    if rotate then
-        local ocosx,osiny = CMP.getDirection(obj.x,obj.y,
-                                            obj.rect.right[1],
-                                             obj.rect.right[2])
-        local tarcos = tcosx-tcosx%0.1
-        local objcos = ocosx-ocosx%0.1
-        local tarsin = tsiny-tsiny%0.1
-        local objsin = osiny-osiny%0.1
-
-        if tarcos == objcos and tarsin == objsin then
-            obj.da=0
-            return dx,dy,side
-        end
-
-        local tacos = math.acos(tcosx)
-        local oacos = math.acos(ocosx)
-
-        if tarsin<0 then tacos = math.pi*2-tacos end
-        if objsin<0 then oacos = math.pi*2-oacos end
-
-        if tacos>=oacos then
-            side=1
-            if tacos-oacos > math.pi then side=-1 end
-        else side=-1
-            if oacos-tacos > math.pi then side=1 end
-        end
-    end
-    return dx,dy,side
-end
-
-function CMP.shot(obj,side,offset,kick)
-    side = side or obj.weapon.side or 'right'
-    offset = offset or obj.weapon.offset or {0,0}
-    kick = kick or obj.weapon.kick or 0
-    local x,y = CMP.getRectSide(obj.rect[side][1],
-                             obj.rect[side][2], obj.angle, offset)
-    obj.weapon{x=x,y=y, dx=obj.dx, dy=obj.dy,
-                angle=obj.angle, da=0, scale=obj.scale}
-    if obj.move then obj:move(kick) end
-end
-
-function CMP.hit(obj,damage)
-    damage = damage or 1
-    if type(obj.hp)=='table' then
-        obj.hp.val = obj.hp.val-damage
-        return obj.hp.val<=0
-    else
-        obj.hp = obj.hp-damage
-        return obj.hp<=0
-    end
-end
-
-function CMP.getParticle(shsize,shtype)
+function CMP.getParticle(fsize,form)
     local canvas
-    if shtype=='circle' or shtype=='rectangle' then
-        canvas = love.graphics.newCanvas(shsize, shsize)
+    if form=='circle' or form=='rectangle' then
+        canvas = love.graphics.newCanvas(fsize, fsize)
         love.graphics.setCanvas(canvas)
         love.graphics.setColor(1,1,1,1)
-        if shtype=='circle' then
-            love.graphics.circle('fill', shsize/2, shsize/2,shsize/2)
+        if form=='circle' then
+            love.graphics.circle('fill', fsize/2, fsize/2,fsize/2)
         else
-            love.graphics.rectangle('fill', 0, 0, shsize, shsize)
+            love.graphics.rectangle('fill', 0, 0, fsize, fsize)
         end
         love.graphics.setCanvas()
-    else canvas = love.graphics.newImage(shtype)
+    else canvas = love.graphics.newImage(form)
     end
     return canvas
 end
 
-function CMP.nodeParticle(obj,x,y,en,shsize,clrs,shtype,time,ptsize,accel)
-    obj.screen.particles = obj.screen.particles or {}
+function CMP.nodeParticle(obj,x,y,en,fsize,clrs,form,time,ptsize,accel,spin)
+    obj.node.particles = obj.node.particles or {}
     x = x or obj.x
     y = y or obj.y
     en = en or 20
-    shsize = shsize or {1}
+    fsize = fsize or {1}
     clrs = clrs or {{1,1,0,1}, {1,164/255,64/255,1}, {64/255,64/255,64/255,0}}
     local grad = {}
     for i=1, #clrs do
         for j=1, #clrs[i] do grad[#grad+1] = clrs[i][j] end
     end
-    shtype = shtype or 'circle'
+    form = form or 'circle'
     time = time or {0.3,1}
     ptsize = ptsize or {0.5,1}
     accel = accel or 100
@@ -355,33 +408,34 @@ function CMP.nodeParticle(obj,x,y,en,shsize,clrs,shtype,time,ptsize,accel)
             -love.math.random(accel/2,accel),
             love.math.random(accel/2,accel),
             love.math.random(accel/2,accel)}
-
-    for i=1, #shsize do
-        local image = CMP.getParticle(shsize[i],shtype)
-        local particle = love.graphics.newParticleSystem(image, 600)
+    spin = spin or {-5,5}
+    for i=1, #fsize do
+        local image = CMP.getParticle(fsize[i],form)
+        local particle = love.graphics.newParticleSystem(image, 1000)
         particle:setParticleLifetime(unpack(time))
         particle:setLinearAcceleration(unpack(finaccel))
         particle:setColors(unpack(grad))
         particle:setSizes(unpack(ptsize))
-        particle:setPosition(x, y)
         particle:setSizeVariation(1)
+        particle:setPosition(x, y)
         particle:setEmissionArea('uniform', 5, 5, 0)
-        particle:setRotation(1, 8)
-        particle:setSpin(1, 4)
+        particle:setRotation(0, math.pi*2)
+        particle:setSpin(unpack(spin))
+        particle:setSpinVariation(1)
         particle:emit(en)
-        obj.screen.particles[particle] = particle
+        obj.node.particles[particle] = particle
     end
 end
 
-function CMP.objectParticle(obj,shsize,clrs,shtype,time,ptsize,accel)
+function CMP.objectParticle(obj,fsize,clrs,form,time,ptsize,accel,spin)
     obj.particles = obj.particles or {}
-    shsize = shsize or 5
+    fsize = fsize or 5
     clrs = clrs or {{1,1,1,200/255}, {1,1,1,100/255}, {1,1,1,0}}
     local grad = {}
     for i=1, #clrs do
         for j=1, #clrs[i] do grad[#grad+1] = clrs[i][j] end
     end
-    shtype = shtype or 'circle'
+    form = form or 'circle'
     time = time or {0.5,1}
     ptsize = ptsize or {0.2,1}
     accel = accel or 40
@@ -389,33 +443,34 @@ function CMP.objectParticle(obj,shsize,clrs,shtype,time,ptsize,accel)
             -love.math.random(accel/2,accel),
             love.math.random(accel/2,accel),
             love.math.random(accel/2,accel)}
+    spin = spin or {-0.5,0.5}
 
-    local image = CMP.getParticle(shsize,shtype)
-    local particle = love.graphics.newParticleSystem(image, 400)
+    local image = CMP.getParticle(fsize,form)
+    local particle = love.graphics.newParticleSystem(image, 1000)
     particle:setParticleLifetime(unpack(time))
     particle:setLinearAcceleration(unpack(accel))
     particle:setColors(unpack(grad))
     particle:setSizes(unpack(ptsize))
-    particle:setEmissionArea('uniform', 1, 1, 0)
-    particle:setRotation(0.5, 1)
-    particle:setSpin(0.1, 0.5)
+    -- particle:setEmissionArea('uniform', 1, 1, 0)
+    particle:setRotation(0, 1)
+    particle:setSpin(unpack(spin))
     obj.particles[particle] = particle
 
-    local objectParticle={['particle']=particle}
-    function objectParticle.update(dt,side,offset,speed,angle)
+    local objParticle={['particle']=particle}
+    function objParticle.update(dt,side,offset,speed,angle)
         dt = dt or CMP.DT
         side = side or 'center'
         offset = offset or {0,0}
         speed = speed or 0
         angle = angle or obj.angle
-        local x,y = CMP.getRectSide(obj.rect[side][1], obj.rect[side][2],
-                                 obj.angle,offset)
-        objectParticle.particle:setPosition(x, y)
-        objectParticle.particle:setSpeed(speed/2,speed)
-        objectParticle.particle:setDirection(angle)
-        objectParticle.particle:update(dt)
+        local x,y = CMP.getRectOffset(obj.rect[side][1], obj.rect[side][2],
+                                      obj.angle,offset)
+        objParticle.particle:setPosition(x, y)
+        objParticle.particle:setSpeed(speed/2,speed)
+        objParticle.particle:setDirection(angle)
+        objParticle.particle:update(dt)
     end
-    return objectParticle
+    return objParticle
 end
 
 function CMP.destroyParticle(obj,maxnum,time,accel)
@@ -423,8 +478,8 @@ function CMP.destroyParticle(obj,maxnum,time,accel)
     local nx,ny = unpack(maxnum)
     local numx = love.math.random(nx,ny)
     local numy = love.math.random(nx+1,ny+1)
-    local destroyData = obj.destroyData or obj.imageData
-    local sx, sy = destroyData:getDimensions()
+    local dstdata = obj.dstdata or obj.imgdata
+    local sx, sy = dstdata:getDimensions()
 
     local arr = {}
     local tilex,tiley = sx/numx,sy/numy
@@ -433,7 +488,7 @@ function CMP.destroyParticle(obj,maxnum,time,accel)
     for i=0,numx-1 do
         for j=0,numy-1 do
             local data = love.image.newImageData(tilex,tiley)
-            data:paste(destroyData, 0, 0, i*tilex, j*tiley, sx, sy)
+            data:paste(dstdata, 0, 0, i*tilex, j*tiley, sx, sy)
             arr[#arr+1] = data
         end
     end
@@ -447,69 +502,7 @@ function CMP.destroyParticle(obj,maxnum,time,accel)
     end
 end
 
-function CMP.getRect(obj)
-    local cosx,siny = CMP.getCosSin(obj.angle)
-    local wid,hei = obj.imageData:getDimensions()
-    obj.wid = wid*obj.scale
-    obj.hei = hei*obj.scale
-    obj.radius = math.min(obj.wid, obj.hei)/2
-    local midwid=obj.wid/2
-    local midhei=obj.hei/2
-    local horx = cosx*midwid
-    local hory = siny*midwid
-    local verx = cosx*midhei
-    local very = siny*midhei
-
-    return {topleft = {obj.x-horx+very, obj.y-hory-verx},
-            top = {obj.x+very, obj.y-verx},
-            topright = {obj.x+horx+very, obj.y+hory-verx},
-            right = {obj.x+horx, obj.y+hory},
-            botright = {obj.x+horx-very, obj.y+hory+verx},
-            bot = {obj.x-very, obj.y+verx},
-            botleft = {obj.x-horx-very, obj.y-hory+verx},
-            left = {obj.x-horx, obj.y-hory},
-            center = {obj.x, obj.y}}
-end
-
-function CMP.getRectSide(sidex,sidey,angle,offset)
-    local cosx,siny = CMP.getCosSin(angle)
-    local horx = cosx*offset[1]
-    local hory = siny*offset[1]
-    local verx = cosx*offset[2]
-    local very = siny*offset[2]
-    local x,y
-    x = sidex+horx-very
-    y = sidey+hory+verx
-    return x,y
-end
-
-function CMP.getRandOffsetXY(x,y,widscr,heiscr,side)
-    if x and y then
-        x,y = x,y
-    else
-        x = love.math.random(0,widscr)
-        y = love.math.random(0,heiscr)
-        if side=='rand' then
-            local randside = love.math.random(0,1)
-            if randside==0 then
-                local randx = love.math.random(0,1)
-                x = widscr
-                if randx==0 then x = 0 end
-            else
-                local randy = love.math.random(0,1)
-                y = heiscr
-                if randy==0 then y = 0 end
-            end
-        elseif side=='top' then y = 0
-        elseif side=='bot' then y = heiscr
-        elseif side=='left' then x = 0
-        elseif side=='right' then x = widscr
-        else x,y = x,y end
-    end
-    return x,y
-end
-
-function CMP.getGoal(obj,matrix,oldgoal,viewrange,empty,target)
+function CMP.getMatrixGoal(obj,matrix,oldgoal,viewrange,empty,target)
     local cells = {{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{1,1},{1,-1},{-1,1}}
     local maxview = 0
     local goal = nil
@@ -519,8 +512,8 @@ function CMP.getGoal(obj,matrix,oldgoal,viewrange,empty,target)
         local tmpgoal = {}
         local x,y
         for view=1,viewrange do
-            x = obj.xtile+cells[i][1]*view
-            y = obj.ytile+cells[i][2]*view
+            x = obj.tilex+cells[i][1]*view
+            y = obj.tiley+cells[i][2]*view
             for tar=1,#target do
                 if matrix[y][x]==target[tar] then return {x,y} end
             end
@@ -543,14 +536,14 @@ function CMP.getGoal(obj,matrix,oldgoal,viewrange,empty,target)
 end
 
 function CMP.getEmptyTile(matrix,tile,wall)
-    local xtile,ytile = tile[1],tile[2]
+    local tilex,tiley = tile[1],tile[2]
     local wid,hei=#matrix[1],#matrix
     local cells = {{1,0},{0,1},{-1,0},{0,-1}}
     local side = {'right','down','left','up'}
     local empty={}
     for i=1,#cells do
-        local x = xtile+cells[i][1]
-        local y = ytile+cells[i][2]
+        local x = tilex+cells[i][1]
+        local y = tiley+cells[i][2]
         if x>0 and x<=wid and y>0 and y<=hei then
             if matrix[y][x]~=wall then
                 empty[#empty+1]=side[i]
@@ -560,7 +553,7 @@ function CMP.getEmptyTile(matrix,tile,wall)
     return empty
 end
 
-function CMP.getPath(matrix,sign,last)
+function CMP.getMatrixPath(matrix,sign,last)
     local path = {last}
     local wid = #matrix[1]
     local hei = #matrix
@@ -580,7 +573,7 @@ function CMP.getPath(matrix,sign,last)
     return path
 end
 
-function CMP.getWave(matrix,wave,goal,empty,sign,target)
+function CMP.getMatrixWave(matrix,wave,goal,empty,sign,target)
     local wid = #matrix[1]
     local hei = #matrix
 
@@ -609,14 +602,14 @@ function CMP.getWave(matrix,wave,goal,empty,sign,target)
     end
 
     if freecell>0 then
-        return CMP.getWave(matrix,wave,goal,empty,sign+1,target)
+        return CMP.getMatrixWave(matrix,wave,goal,empty,sign+1,target)
     else
         return matrix,sign,wave[#wave]
     end
 end
 
 function CMP.matrixPathfinder(obj,matrix,step,goal,empty,target)
-    goal = goal or obj.goal or {obj.xtile,obj.ytile}
+    goal = goal or obj.goal or {obj.tilex,obj.tiley}
 
     if step[1][1]==goal[1] and step[1][2]==goal[2] then
         obj.goal = nil
@@ -631,8 +624,8 @@ function CMP.matrixPathfinder(obj,matrix,step,goal,empty,target)
         end
     end
 
-    local wavematrix,sign,last = CMP.getWave(clone,step,goal,empty,1,target)
-    local path = CMP.getPath(wavematrix,sign,last)
+    local wavemat,sign,last = CMP.getMatrixWave(clone,step,goal,empty,1,target)
+    local path = CMP.getMatrixPath(wavemat,sign,last)
     return path
 end
 
@@ -644,7 +637,7 @@ function CMP.matrixCollision(obj,matrix,tilesize)
     if math.abs(obj.dx)<CMP.TILESIZE then dx=0 end
     if math.abs(obj.dy)<CMP.TILESIZE then dy=0 end
 
-    local tile = matrix[obj.ytile+dy][obj.xtile+dx]
+    local tile = matrix[obj.tiley+dy][obj.tilex+dx]
     obj.lastcoll[#obj.lastcoll+1]={tile=tile,dx=dx,dy=dy}
 end
 

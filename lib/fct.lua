@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 -- FCT
--- 3.5
+-- 4.6
 -- Functional Tools (lua)
 -- fct.lua
 
@@ -25,49 +25,51 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 -- DEALINGS IN THE SOFTWARE.
 
--- 3.5
--- + increase perfomance (wrong situations when use len function)
--- + refactor split, sep and shuff
--- + remove ztab, valval, randtab
--- + add flip
--- + improve filter
--- + bug in reduce
-
--- 4.0
--- + improve rep
+-- 5.0
+-- separate combo/random library
 -- clear tests
 
 -- Tool Box
--- gkv, len, count, keys, vals, iskey, isval, flip, range, rep,
--- split, reverse, isort, slice, sep, clone, iter,
--- equal, join, merge, same, uniq,
--- map, mapr, filter, any, all, zip, partial, reduce, compose,
--- permutation, randkey, randval, shuff, shuffknuth
+-- len, count, keys, vals, items, iskey, isval, flip, range, rep,
+-- split, invert, isort, slice, sep, copy, iter,
+-- equal, join, union, same, diff,
+-- each, map, mapr, filter, any, all, zip, reduce, partial, compose
+-- chain, cache,
+-- accumulate, permutation, combination, randkey, randval, shuff, shuffknuth
+-- weighted
 
 -- No metatables when return arr
--- keys, vals, flip, range, repl, split, sep, iter, merge, same, uniq, map, filter, zip, permutation, shuffknuth
+-- keys, vals, items, flip, range, repl, split, sep, iter, union, same, diff, map, filter, zip, accumulate, permutation, combination, shuffknuth (faster)
 
--- Error traceback
--- novarg, numvarg
+-- Support
+-- gkv
 
-if arg[0] then print('3.5 FCT Functional Tools (lua)', arg[0]) end
-if arg[1] then print('3.5 FCT Functional Tools (lua)', arg[1]) end
+-- Errors
+-- nofarg, numfarg
+
+if arg[0] then io.write('4.0 FCT Functional Tools (lua)', arg[0],'\n') end
+if arg[1] then io.write('4.0 FCT Functional Tools (lua)', arg[1],'\n') end
 
 -- lua<5.3
 local unpack = table.unpack or unpack
 local utf8 = require('utf8')
--- seed
+
 math.randomseed(os.time())
--- errors
-local function numvarg(name)
+
+-- Errors
+local function numfarg(name)
     local k,_
     for i=1,16 do k,_ = debug.getlocal(3,i) if k==name then return i end end
 end
 
-local function novarg(farg,name,expected)
-    if type(farg)~=expected then
+local function nofarg(farg,name,...)
+    local expected = {}
+    for _,v in pairs({...}) do
+        expected[v]=v
+    end
+    if not expected[type(farg)] then
         local t1,t2,num,fin
-        num = numvarg(name)
+        num = numfarg(name)
         t1=string.format('%s: %s: bad argument #%d to', arg[-1], arg[0],num)
         t2=string.format('(expected %s, got %s)', expected, type(farg))
         fin=string.format('%s \'%s\' %s', t1, debug.getinfo(2)['name'], t2)
@@ -77,29 +79,39 @@ local function novarg(farg,name,expected)
 end
 
 local FCT={}
-function FCT.gkv(item)
-    novarg(item,'item','table')
-    for k, v in pairs(item) do print(k, v, type(v)) end
+
+-- Support
+function FCT.gkv(...)
+    for key, value in pairs(...) do
+        if type(value) == 'table' then
+            for k, v in pairs(value) do print(k, v, type(v)) end
+        else
+            print(key, value)
+        end
+    end
 end
 
+-- Tool Box
 function FCT.len(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local len = 0
     for _ in pairs(item) do len = len + 1 end
     return len
 end
 
 function FCT.count(val,item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local res = 0
     for _,v in pairs(item) do
-        if v==val then res = res + 1 end
+        if v==val then
+            res = res + 1
+        end
     end
     return res
 end
 
 function FCT.keys(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local arr = {}
     for k, _ in pairs(item) do
         arr[#arr+1] = k
@@ -108,7 +120,7 @@ function FCT.keys(item)
 end
 
 function FCT.vals(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local arr = {}
     for _, v in pairs(item) do
         arr[#arr+1] = v
@@ -116,8 +128,17 @@ function FCT.vals(item)
     return arr
 end
 
+function FCT.items(item)
+    nofarg(item,'item','table')
+    local arr = {}
+    for _,v in pairs(item) do
+        arr[v]=v
+    end
+    return arr
+end
+
 function FCT.iskey(key,item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     if key==nil then return false end
     for k, v in pairs(item) do
         if k==key then return {k,v} end
@@ -126,7 +147,7 @@ function FCT.iskey(key,item)
 end
 
 function FCT.isval(val,item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     if val==nil then return false end
     for k, v in pairs(item) do
         if v==val then return {k,v} end
@@ -135,11 +156,12 @@ function FCT.isval(val,item)
 end
 
 function FCT.flip(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local arr = {}
     for k,v in pairs(item) do arr[v]=k end
     return arr
 end
+
 
 function FCT.range(...)
     local vargs = {...}
@@ -160,7 +182,7 @@ function FCT.range(...)
 end
 
 function FCT.rep(obj,num)
-    novarg(num,'num','number')
+    nofarg(num,'num','number')
     local arr = {}
     for i=1, num do arr[i] = obj end
     return arr
@@ -168,7 +190,7 @@ end
 
 function FCT.split(obj,sep)
     if type(obj)=='number' then obj = tostring(obj) end
-    novarg(obj,'obj','string')
+    nofarg(obj,'obj','string')
     sep = sep or ''
     local arr={}
     if #sep>0 then
@@ -184,8 +206,8 @@ function FCT.split(obj,sep)
     return arr
 end
 
-function FCT.reverse(item)
-    novarg(item,'item','table')
+function FCT.invert(item)
+    nofarg(item,'item','table')
     local arr = {}
     local meta = getmetatable(item)
     for k,v in pairs(item) do
@@ -200,7 +222,7 @@ function FCT.reverse(item)
 end
 
 function FCT.isort(item,val,rev)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local keys = {}
     for k,_ in pairs(item) do keys[#keys+1]=k end
 
@@ -227,7 +249,7 @@ function FCT.isort(item,val,rev)
 end
 
 function FCT.slice(item,start,fin,step)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local arr = {}
     local meta = getmetatable(item)
     local allkeys = FCT.keys(item)
@@ -247,7 +269,7 @@ function FCT.slice(item,start,fin,step)
 end
 
 function FCT.sep(item,num)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     num = num or 1
     local arr = {}
     local i=1
@@ -259,8 +281,8 @@ function FCT.sep(item,num)
     return arr
 end
 
-function FCT.clone(item)
-    novarg(item,'item','table')
+function FCT.copy(item)
+    nofarg(item,'item','table')
     local arr = {}
     local meta = {}
     local oldmeta = getmetatable(item) or {}
@@ -269,7 +291,7 @@ function FCT.clone(item)
 
     for k, v in pairs(item) do
         if type(v) == 'table' then
-            arr[k] = FCT.clone(v)
+            arr[k] = FCT.copy(v)
         else
             arr[k] = v
         end
@@ -279,8 +301,8 @@ function FCT.clone(item)
 end
 
 function FCT.iter(item)
-    novarg(item,'item','table')
-    local tmpitem = FCT.clone(item)
+    nofarg(item,'item','table')
+    local tmpitem = FCT.copy(item)
     local arr = {}
     local meta = {}
 
@@ -303,8 +325,8 @@ function FCT.iter(item)
 end
 
 function FCT.equal(item1,item2)
-    novarg(item1,'item1','table')
-    novarg(item2,'item2','table')
+    nofarg(item1,'item1','table')
+    nofarg(item2,'item2','table')
     if #item1~=#item2 then return false end
     for k,v in pairs(item1) do
         if v~=item2[k] then return false end
@@ -317,7 +339,7 @@ function FCT.join(item1,item2)
     item2 = item2 or {}
     if type(item2)~='table' then item2 = {item2} end
 
-    local arr = FCT.clone(item1)
+    local arr = FCT.copy(item1)
     local meta = getmetatable(arr)
     local oldmeta = getmetatable(item2) or {}
 
@@ -325,15 +347,15 @@ function FCT.join(item1,item2)
 
     for k, v in pairs(item2) do
         if type(k)=='number' then k = #arr+1 end
-        if type(v) == 'table' then arr[k] = FCT.clone(v)
+        if type(v) == 'table' then arr[k] = FCT.copy(v)
         else arr[k] = v end
     end
     return arr
 end
 
-function FCT.merge(item1,item2)
-    novarg(item1,'item1','table')
-    novarg(item2,'item2','table')
+function FCT.union(item1,item2)
+    nofarg(item1,'item1','table')
+    nofarg(item2,'item2','table')
     local arr = {}
 
     for k, v in pairs(item1) do
@@ -352,8 +374,8 @@ function FCT.merge(item1,item2)
 end
 
 function FCT.same(item1,item2)
-    novarg(item1,'item1','table')
-    novarg(item2,'item2','table')
+    nofarg(item1,'item1','table')
+    nofarg(item2,'item2','table')
     local arr = {}
 
     for k, v in pairs(item1) do
@@ -365,9 +387,9 @@ function FCT.same(item1,item2)
     return arr
 end
 
-function FCT.uniq(item1,item2)
-    novarg(item1,'item1','table')
-    novarg(item2,'item2','table')
+function FCT.diff(item1,item2)
+    nofarg(item1,'item1','table')
+    nofarg(item2,'item2','table')
     local arr = {}
 
     for k, v in pairs(item1) do
@@ -385,9 +407,23 @@ function FCT.uniq(item1,item2)
     return arr
 end
 
+function FCT.each(obj,item)
+    nofarg(obj,'obj','string','function')
+    nofarg(item,'item','table')
+    if type(obj) == 'string' then
+        for _, v in pairs(item) do
+            v[obj]()
+        end
+    else
+        for _, v in pairs(item) do
+            obj(v)
+        end
+    end
+end
+
 function FCT.map(func,item)
-    novarg(func,'func','function')
-    novarg(item,'item','table')
+    nofarg(func,'func','function')
+    nofarg(item,'item','table')
     local arr = {}
     for k, v in pairs(item) do
         arr[k] = func(v)
@@ -396,8 +432,8 @@ function FCT.map(func,item)
 end
 
 function FCT.mapr(func,item)
-    novarg(func,'func','function')
-    novarg(item,'item','table')
+    nofarg(func,'func','function')
+    nofarg(item,'item','table')
     local arr = {}
     local meta = getmetatable(item)
     for k, v in pairs(item) do
@@ -412,8 +448,8 @@ function FCT.mapr(func,item)
 end
 
 function FCT.filter(func,item)
-    novarg(func,'func','function')
-    novarg(item,'item','table')
+    nofarg(func,'func','function')
+    nofarg(item,'item','table')
     local arr = {}
     for k, v in pairs(item) do
         if func(v) then arr[k] = v end
@@ -422,56 +458,45 @@ function FCT.filter(func,item)
 end
 
 function FCT.any(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     for _,v in pairs(item) do if v then return true end end
     return false
 end
 
 function FCT.all(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     for _,v in pairs(item) do if not v then return false end end
     return true
 end
 
 function FCT.zip(...)
-    local vargs = FCT.filter(function(item)
-                    if type(item)=='table' then return true end end, {...})
-    novarg(vargs[1],'vargs','table')
-
+    local tmp = {}
     local minlen = false
-    for _, v in pairs(vargs) do
-        local lenarg
-        if getmetatable(v) and getmetatable(v).__len then
-            lenarg = #v
-        else
-            lenarg = FCT.len(v)
+    local lenarg
+
+    for _, v in pairs({...}) do
+        if type(v)=='table' then
+            if getmetatable(v) and getmetatable(v).__len then
+                lenarg = #v
+            else
+                lenarg = FCT.len(v)
+            end
+            if not minlen then minlen = lenarg end
+            if lenarg < minlen then minlen = lenarg end
+            tmp[#tmp+1]=v
         end
-        if not minlen then minlen = lenarg end
-        if lenarg < minlen then minlen = lenarg end
     end
 
     local arr = {}
     for i=1, minlen do
-        arr[i] = FCT.map(function(item) return item[i] end, vargs)
+        arr[i] = FCT.map(function(item) return item[i] end, tmp)
     end
     return arr
 end
 
-function FCT.partial(func,...)
-    novarg(func,'func','function')
-    local vargs = {...}
-
-    local function inner(...)
-        local innervargs = {...}
-        local res = FCT.join(vargs, innervargs)
-        return func(unpack(res, 1, #res))
-    end
-    return inner
-end
-
 function FCT.reduce(func,item)
-    novarg(func,'func','function')
-    novarg(item,'item','table')
+    nofarg(func,'func','function')
+    nofarg(item,'item','table')
     local res = nil
     local allkeys = FCT.keys(item)
     local first = item[allkeys[1]]
@@ -482,44 +507,118 @@ function FCT.reduce(func,item)
             first = res
         end
     else
-        res = func(first, nil)
+        res = first
     end
     return res
 end
 
+function FCT.partial(func,...)
+    nofarg(func,'func','function')
+    local vargs = {...}
+
+    local function inner(...)
+        local innervargs = {...}
+        local res = FCT.join(vargs, innervargs)
+        return func(unpack(res, 1, #res))
+    end
+    return inner
+end
+
 function FCT.compose(func,wrap)
-    novarg(func,'func','function')
-    novarg(wrap,'wrap','function')
+    nofarg(func,'func','function')
+    nofarg(wrap,'wrap','function')
     local function inner(...)
         return FCT.reduce(function(x, y) return  y(x) end, {wrap(...), func})
     end
     return inner
 end
 
-function FCT.permutation(item,arr)
-    novarg(item,'item','table')
+function FCT.chain(...)
+    local vargs = {...}
+    local arr = {}
+    for i=1, #vargs do
+        local func = vargs[i]
+        if type(func)=='function' then arr[func]=func end
+    end
+
+    return function(...)
+        for f in pairs(arr) do f(...) end
+    end
+end
+
+function FCT.cache(func)
+    nofarg(func,'func','function')
+    local cached = {}
+    return function(...)
+            local key = table.concat({...})
+            local res = cached[key]
+            if not res then
+                res = func(...)
+                cached[key]=res
+                return res
+            end
+            return res
+        end
+end
+
+-- p = n!
+-- repeat
+-- p = n^n
+-- subset
+-- p = n!/(n-k)!
+function FCT.permutation(item,num,arr)
+    nofarg(item,'item','table')
+    num = num or #item
     arr = arr or {}
-    arr[#arr+1]={unpack(item)}
 
-    local index
-    for i=#item,2,-1 do if item[i]>item[i-1] then index = i-1 break end end
-    if not index then return arr end
-
-    for i=#item,1,-1 do
-        if item[i]>item[index] then
-            item[i],item[index] = item[index],item[i]
-            local tail = {unpack(item,index+1,#item)}
-            item  = {unpack(item,1,index)}
-            table.sort(tail,function(a,b) return a<b end)
-            for j=1,#tail do item[#item+1]=tail[j] end
-            break
+    if num <= 1 then arr[#arr+1] = {unpack(item)}
+    else
+        for i=1,num do
+            item[num], item[i] = item[i], item[num]
+            FCT.permutation(item,num-1,arr)
+            item[num], item[i] = item[i], item[num]
         end
     end
-    return FCT.permutation(item,arr)
+    return arr
+end
+
+-- c = n!/(k!(n-k)!)
+function FCT.combination(item,num,arr)
+    nofarg(item,'item','table')
+    num = num or 1
+    arr = arr or {}
+
+    local findcombo
+    findcombo = function(it,res)
+            res = res or {}
+            res[#res+1] = table.remove(it,1)
+            if (#res == num) then
+                arr[#arr+1] = res
+            else
+                for j=1,#it do
+                    findcombo({unpack(it,j,#it)},{unpack(res)})
+                 end
+            end
+        end
+
+    for _=1, #item do
+        findcombo(item)
+    end
+    return arr
+end
+
+function FCT.accumulate(item,func)
+    nofarg(item,'item','table')
+    func = func or function(a,b) return a+b end
+    local arr = {item[1]}
+    for i=2,#item do
+        arr[#arr+1]=func(arr[#arr],item[i])
+    end
+    return arr
 end
 
 function FCT.randkey(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local allkeys = FCT.keys(item)
     local index = math.random(1, #allkeys)
     return allkeys[index]
@@ -530,8 +629,8 @@ function FCT.randval(item)
 end
 
 function FCT.shuff(item)
-    novarg(item,'item','table')
-    local arr = FCT.clone(item)
+    nofarg(item,'item','table')
+    local arr = FCT.copy(item)
     local allkeys = FCT.keys(item)
     for i=1, #allkeys do
         local index = allkeys[math.random(i, #allkeys)]
@@ -540,14 +639,28 @@ function FCT.shuff(item)
     return arr
 end
 
+
 function FCT.shuffknuth(item)
-    novarg(item,'item','table')
+    nofarg(item,'item','table')
     local arr = {unpack(item)}
     for i=1, #arr do
         local index = math.random(i,#arr)
         arr[i], arr[index] = arr[index], arr[i]
     end
     return arr
+end
+
+function FCT.weighted(item)
+    nofarg(item,'item','table')
+    local sum = 0
+    for _, v in pairs(item) do
+        sum = sum + v
+    end
+    local rnd = math.random(sum)
+    for k, v in pairs(item) do
+        if rnd <= v then return k end
+        rnd = rnd - v
+    end
 end
 
 return FCT

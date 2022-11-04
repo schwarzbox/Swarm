@@ -6,10 +6,10 @@ local fc = require('lib/fct')
 local fl = require('lib/lovfl')
 
 local SET = {
-    GAMENAME = love.window.getTitle(),
+    APPNAME = love.window.getTitle(),
     VER = '1.5',
     SAVE = 'swarmsave.lua',
-    FULLSCR = false,
+    FULLSCR = love.window.getFullscreen(),
     WID = love.graphics.getWidth(),
     HEI = love.graphics.getHeight(),
     MIDWID = love.graphics.getWidth() / 2,
