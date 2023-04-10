@@ -44,11 +44,8 @@
 -- Support
 -- gkv
 
--- Errors
--- nofarg, numfarg
-
-if arg[0] then io.write('4.0 FCT Functional Tools (lua)', arg[0],'\n') end
-if arg[1] then io.write('4.0 FCT Functional Tools (lua)', arg[1],'\n') end
+if arg[0] then io.write('4.6 FCT Functional Tools (lua)', arg[0],'\n') end
+if arg[1] then io.write('4.6 FCT Functional Tools (lua)', arg[1],'\n') end
 
 -- lua<5.3
 local unpack = table.unpack or unpack
@@ -56,7 +53,7 @@ local utf8 = require('utf8')
 
 math.randomseed(os.time())
 
--- Errors
+-- Local function to check arguments and raise errors
 local function numfarg(name)
     local k,_
     for i=1,16 do k,_ = debug.getlocal(3,i) if k==name then return i end end
@@ -79,17 +76,6 @@ local function nofarg(farg,name,...)
 end
 
 local FCT={}
-
--- Support
-function FCT.gkv(...)
-    for key, value in pairs(...) do
-        if type(value) == 'table' then
-            for k, v in pairs(value) do print(k, v, type(v)) end
-        else
-            print(key, value)
-        end
-    end
-end
 
 -- Tool Box
 function FCT.len(item)
@@ -660,6 +646,17 @@ function FCT.weighted(item)
     for k, v in pairs(item) do
         if rnd <= v then return k end
         rnd = rnd - v
+    end
+end
+
+-- Support
+function FCT.gkv(...)
+    for key, value in pairs(...) do
+        if type(value) == 'table' then
+            for k, v in pairs(value) do print(k, v, type(v)) end
+        else
+            print(key, value)
+        end
     end
 end
 

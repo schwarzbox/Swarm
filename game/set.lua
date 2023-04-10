@@ -1,5 +1,5 @@
 -- Thu Aug 30 13:59:57 2018
--- (c) Alexander Veledzimovich
+-- (c) Aliaksandr Veledzimovich
 -- set SWARM
 
 local fc = require('lib/fct')

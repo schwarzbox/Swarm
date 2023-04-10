@@ -5,7 +5,7 @@
 -- lovui.lua
 
 -- MIT License
--- Copyright (c) 2018 Alexander Veledzimovich veledz@gmail.com
+-- Copyright (c) 2018 Aliaksandr Veledzimovich veledz@gmail.com
 
 -- Permission is hereby granted, free of charge, to any person obtaining a
 -- copy of this software and associated documentation files (the "Software"),
@@ -56,8 +56,14 @@ local FRMCLR = {64/255,64/255,64/255,1}
 local BOXCLR = {FRMCLR[1]-0.1,FRMCLR[2]-0.1,FRMCLR[3]-0.1,1}
 local POPCLR = {FRMCLR[1]-0.05,FRMCLR[2]-0.05,FRMCLR[3]-0.05,0.9}
 local FNT = {nil,16}
-local UI = {kpress={},krelease={},mpress={},mrelease={},
-            mouse={0,0,0,0,false},wheel={0,0}}
+local UI = {
+    kpress={},
+    krelease={},
+    mpress={},
+    mrelease={},
+    mouse={0,0,0,0,false},
+    wheel={0,0}
+}
 -- OOP
 local function Class(Super, class)
     Super = Super or {}
@@ -82,8 +88,13 @@ end
 
 function UI.load()
     local events = {
-        'keypressed', 'keyreleased', 'mousepressed',
-        'mousereleased','mousemoved','wheelmoved','update'
+        'keypressed',
+        'keyreleased',
+        'mousepressed',
+        'mousereleased',
+        'mousemoved',
+        'wheelmoved',
+        'update'
     }
     -- add to love
     local default = {}
@@ -1134,8 +1145,17 @@ function UI.Slider:new(o)
 
     local barfrm = 2
     if self.image then barfrm = 0 end
-    self.bar = UI.Button{fnt=self.fnt, fntclr=self.fntclr, image=self.image,
-                frm=barfrm, frmclr=self.fntclr, mode='fill',corner={10,10,10}}
+    self.bar = UI.Button{
+        fnt=self.fnt,
+        fntclr=self.fntclr,
+        image=self.image,
+        frm=barfrm,
+        frmclr=self.fntclr,
+        mode='fill',
+        corner={0,0,0},
+        -- round corners
+        -- corner={10,10,10}
+    }
     -- setup cursor wid and max len
     self:setSize()
     self.border:add(self.bar)

@@ -1,5 +1,5 @@
 -- Thu Aug 30 13:59:57 2018
--- (c) Alexander Veledzimovich
+-- (c) Aliaksandr Veledzimovich
 -- obj SWARM
 
 local Tmr = require('lib/tmr')
